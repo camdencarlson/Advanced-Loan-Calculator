@@ -1,14 +1,19 @@
 %% Loan Calculator and Budget Program
-% 02.21.2023
-clear
+% Last Edit: 02.21.2023
 clc
-
+clear
+% INPUT YOUR PAYMENT TOWARD DEBT HERE
 totalMonthlyDebtPayment = 3975; % INPUT in $ dollars
 
-%% Amortization Calculator
-% Loan Information
-%
-
+% Loan Setup & Information
+% Create struct with all necesary information:
+% - struct.i = Interest Rate (in percent)
+% - struct.ogPrincipal = Original Principal
+% - struct.currPrincipal = Current principal (ogPrincipal by default)
+% - struct.loanTerm = loan term in # of months
+% - struct.name = name of the loan (whatever you want)
+% - struct.currTerm = the current term of the loan you are on (1 by defalt)
+% - struct.AmortSch = a double array for the amortization data to be entered
 
 amortNames = ["Monthly Payment", "Interest Paid", "Principal Paid","Remaining"];
 
@@ -85,139 +90,5 @@ loans = {private, auto, federalOne, federalTwo...
 
 % Calculator setup
 %amortize
-
-for j = 1:length(loans) 
-    principal = loans{j}.ogPrincipal;
-    i = loans{j}.i /100/12;
-    term = loans{j}.loanTerm;
-    monthlyPayment = principal * (i*(1+i)^term)/((1+i)^term - 1);
-    
-    principalArray = [principal];
-    interestArray = [0];
-    principalPayment = [];
-    count = 1;
-    while principal > 0
-        interestArray(count + 1,1) = principal * i;
-        principalPayment(count + 1,1) = monthlyPayment - principal*i;
-        principal = principal - (monthlyPayment - principal*i);
-        principalArray(count + 1,1) = principal;
-        count = count + 1;
-    end
-    monthPaymentArray = ones(length(principalArray),1) .* monthlyPayment;
-    amortStruct = [monthPaymentArray,interestArray, principalPayment,principalArray];
-    loans{j}.AmortSch = [amortStruct];
-
-end
-
-%% 
-clc
-
-for i = 1:length(loans)
-    interestRates(i) = loans{i}.i;
-end
-[interestRatesSorted, sortIndex] = sort(interestRates,"descend") ;
-interestRatesSorted = interestRatesSorted ./100./12;
-loansByPayoff = loans(sortIndex);
-
-names = [""];
-for i = 1:length(loansByPayoff)
-    names(i) = loansByPayoff{i}.name;
-end
-
-names = cellstr(names);
-
-paymentSchedule = zeros(45,length(loansByPayoff) + 1);
-paymentSchedule(:,1) = [1:45]';
-
-
-for x = 1:length(loansByPayoff)
-        amortSch2 = loansByPayoff{x}.AmortSch;
-        minPayments(x) = amortSch2(1,1);
-     
-        paymentSchedule(1,x+1) = amortSch2(loansByPayoff{x}.currTerm,4);
-end
-
-Term = 1;
-storedPayments = [];
-for j = 1:length(loansByPayoff)
-    
-    if ~(paymentSchedule(Term,j+1) > 1)
-        continue
-    end
-    principal = paymentSchedule(Term,j+1);
-    index = ones(1,length(loansByPayoff));
-    index(j) = 0;
-    paymentMatrix = minPayments;
-    minPaymentsForOtherLoans = sum(minPayments(boolean(index)));
-    loanMaxPayoff = totalMonthlyDebtPayment - minPaymentsForOtherLoans;
-    paymentMatrix(j) = loanMaxPayoff;
-    while (principal > loanMaxPayoff - principal*interestRatesSorted(j)) && principal > 0
-        principalPayment = paymentMatrix - paymentSchedule(Term,2:end) .* interestRatesSorted;
-        paymentSchedule(Term + 1,2:end) =  paymentSchedule(Term,2:end) - principalPayment;
-        principal = paymentSchedule(Term + 1,1 + j);
-        storedPayments(Term,:) = paymentMatrix;
-        Term = Term + 1;
-    end
-    if round(principal) > 0
-        lastPayment = principal + principal*interestRatesSorted(j);
-    else 
-        lastPayment = 0;
-    end
-    
-    
-    if j < length(loansByPayoff) && principal > 0
-        paymentMatrix(j) = lastPayment;
-        if (paymentSchedule(Term,j+2)+paymentSchedule(Term,j+2)*interestRatesSorted(j+1))...
-                < (loanMaxPayoff - lastPayment + paymentMatrix(j+1)) && j < length(loansByPayoff)-1
-            paymentMatrix(j+1) = paymentSchedule(Term,j+2)+paymentSchedule(Term,j+2)*interestRatesSorted(j+1);
-            paymentMatrix(j+2) = loanMaxPayoff - lastPayment - paymentMatrix(j+1) + paymentMatrix(j+2);
-
-            if (paymentMatrix(j+2) > paymentSchedule(Term, j+3) + paymentSchedule(Term, j+3)...
-                    *interestRatesSorted(j+2)) && j < length(loansByPayoff) -2
-                paymentMatrix(j+2) = paymentSchedule(Term, j+3) + paymentSchedule(Term, j+3)*interestRatesSorted(j+2);
-                paymentMatrix(j+3) = loanMaxPayoff - lastPayment - paymentMatrix(j+1) - paymentMatrix(j+2) + paymentMatrix(j+3);
-
-                if (paymentMatrix(j+3) > paymentSchedule(Term, j+4) + paymentSchedule(Term, j+4)...
-                    *interestRatesSorted(j+3)) && j < length(loansByPayoff) -3
-                    paymentMatrix(j+3) = paymentSchedule(Term, j+4) + paymentSchedule(Term, j+4)*interestRatesSorted(j+3);
-                    paymentMatrix(j+4) = loanMaxPayoff - lastPayment - paymentMatrix(j+1)...
-                        - paymentMatrix(j+2) - paymentMatrix(j+3) + paymentMatrix(j+4);
-                end
-            end
-            
-            principalPayment = paymentMatrix - paymentSchedule(Term,2:end) .* interestRatesSorted;
-            paymentSchedule(Term + 1,2:end) =  paymentSchedule(Term,2:end) - principalPayment;
-            storedPayments(Term,:) = paymentMatrix;
-            Term = Term + 1;
-            minPayments(j) = 0;
-            minPayments(j+1) = 0;
-            
-        else
-            paymentMatrix(j+1) = paymentMatrix(j+1) + (loanMaxPayoff - lastPayment);
-            principalPayment = paymentMatrix - paymentSchedule(Term,2:end) .* interestRatesSorted;
-            
-            paymentSchedule(Term + 1,2:end) =  paymentSchedule(Term,2:end) - principalPayment;
-            paymentSchedule(Term + 1,1+j) = round(paymentSchedule(Term + 1,1+j));
-            storedPayments(Term,:) = paymentMatrix;
-            Term = Term + 1;
-            minPayments(j) = 0;
-        end
-        
-    end
-    
-end
-
-
-for i = 1:length(storedPayments(:,1))
-    totPaymentChecker(i) = sum(storedPayments(i,:));
-end
-
-totPaymentChecker;
-
-
-
-%% make pretty table
-header = [{'Period'}, names];
-T = array2table(paymentSchedule,...
-    'VariableNames',header)
-
+loans = Amortizer(loans);
+[T, storedPayments] = PaymentCalculator(loans, totalMonthlyDebtPayment);
