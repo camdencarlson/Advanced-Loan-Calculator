@@ -2,8 +2,18 @@
 % Last Edit: 02.21.2023
 clc
 clear
+
 % INPUT YOUR PAYMENT TOWARD DEBT HERE
-totalMonthlyDebtPayment = 3975; % INPUT in $ dollars
+totalMonthlyDebtPayment = 4500; % INPUT in $ dollars
+lumpSumBool = true; % do you want to use a lump sum?
+lumpSum = 23000; %% the lump sum amount
+lumpSumIndex = 1; % the month at which you make the lump sum payment
+% 
+
+
+% ************************************************ %
+
+
 
 % Loan Setup & Information
 % Create struct with all necesary information:
@@ -91,4 +101,4 @@ loans = {private, auto, federalOne, federalTwo...
 % Calculator setup
 %amortize
 loans = Amortizer(loans);
-[T, storedPayments] = PaymentCalculator(loans, totalMonthlyDebtPayment);
+[T, storedPayments] = PaymentCalculator(loans, totalMonthlyDebtPayment, lumpSum, lumpSumBool, lumpSumIndex);
